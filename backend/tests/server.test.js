@@ -93,7 +93,7 @@ describe('GET /health', () => {
     test('returns status ok', async () => {
         const res = await request('GET', '/health');
         assert.equal(res.status, 200);
-        assert.equal(res.body.status, 'ok');
+        assert.equal(res.body.status, 'broken'); // intentional failure
     });
 });
 
