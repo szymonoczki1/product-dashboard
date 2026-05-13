@@ -1,0 +1,63 @@
+name: Setup Node and Run Script
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+      script:
+        required: true
+        type: string
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm ${{ inputs.script }}
+        run: npm run ${{ inputs.script }}
+
+      - name: Save test report
+        if: always() && inputs.node-version == '20' && inputs.script == 'test'
+        run: |
+          mkdir -p test-results
+          echo "Node.js version : ${{ inputs.node-version }}" > test-results/summary.txt
+          echo "Run date        : $(date -u)"                >> test-results/summary.txt
+          echo "Status          : ${{ job.status }}"         >> test-results/summary.txt
+
+      - name: Upload test report artifact
+        if: always() && inputs.node-version == '20' && inputs.script == 'test'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: backend/test-results/
+          retention-days: 7
+
+      - name: Write step summary
+        if: always()
+        run: |
+          echo "## ${{ inputs.script }} (Node ${{ inputs.node-version }})"  >> $GITHUB_STEP_SUMMARY
+          echo ""                                                            >> $GITHUB_STEP_SUMMARY
+          echo "| Metric          | Value                       |"          >> $GITHUB_STEP_SUMMARY
+          echo "|-----------------|------------------------------|"          >> $GITHUB_STEP_SUMMARY
+          echo "| Node.js version | ${{ inputs.node-version }}  |"          >> $GITHUB_STEP_SUMMARY
+          echo "| Script          | npm run ${{ inputs.script}} |"          >> $GITHUB_STEP_SUMMARY
+          echo "| Runner OS       | ${{ runner.os }}            |"          >> $GITHUB_STEP_SUMMARY
+          echo "| Status          | ${{ job.status }}           |"          >> $GITHUB_STEP_SUMMARY
